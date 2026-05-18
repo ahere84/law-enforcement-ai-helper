@@ -1,6 +1,6 @@
 # Law Enforcement AI Helper
 
-Law Enforcement AI Helper is a class project focused on helping law enforcement officers and administrative staff organize investigation paperwork and draft reports more efficiently.
+Law Enforcement AI Helper is a class project for an AI-assisted documentation tool that helps organize case details, draft incident reports, and identify missing information for human review.
 
 ## Project Goal
 
@@ -17,3 +17,20 @@ This system does not make legal decisions, identify suspects, determine guilt, r
 - Missing information checklist
 - Case summary generator
 - Human review and edit workflow
+
+## Prototype
+
+Open `index.html` in a browser to try the current static React prototype. The first demo lets a user fill out an incident form, generate a structured draft report, edit the output, and copy it for review.
+
+If the browser blocks local files, run this command from the project folder and open `http://localhost:4173`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\serve.ps1
+```
+
+## Team Members
+
+- Mark Iversen
+- Alex Isaac
+- Andy Heredia
+- Theodor Santos-Gafudy
