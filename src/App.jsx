@@ -39,6 +39,29 @@ const requiredFields = [
   ["actionsTaken", "Actions taken"],
 ];
 
+const followUpRules = [
+  {
+    terms: ["witness", "statement"],
+    question: "Has the full witness statement been collected and verified?",
+  },
+  {
+    terms: ["camera", "video", "footage"],
+    question: "Has available video or camera footage been requested and reviewed?",
+  },
+  {
+    terms: ["associate", "group", "known"],
+    question: "Are the named associates connected to any prior reports or open cases?",
+  },
+  {
+    terms: ["tattoo", "symbol", "insignia", "clothing", "jewelry"],
+    question: "Were visible identifiers documented with neutral descriptions and reviewed by a detective?",
+  },
+  {
+    terms: ["weapon", "threat", "assault"],
+    question: "Was officer safety risk documented and were required notifications completed?",
+  },
+];
+
 function formatList(value, fallback) {
   const lines = value
     .split("\n")
@@ -50,6 +73,70 @@ function formatList(value, fallback) {
   }
 
   return lines.map((line) => `- ${line}`).join("\n");
+}
+
+function splitLines(value) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function includesAny(source, terms) {
+  const normalized = source.toLowerCase();
+  return terms.some((term) => normalized.includes(term));
+}
+
+function buildCaseReview(caseData, missingItems) {
+  const combinedText = [
+    caseData.incidentType,
+    caseData.peopleInvolved,
+    caseData.narrativeNotes,
+    caseData.evidenceItems,
+    caseData.actionsTaken,
+  ].join(" ");
+
+  const people = splitLines(caseData.peopleInvolved);
+  const evidence = splitLines(caseData.evidenceItems);
+  const actions = splitLines(caseData.actionsTaken);
+  const suggestedQuestions = followUpRules
+    .filter((rule) => includesAny(combinedText, rule.terms))
+    .map((rule) => rule.question);
+
+  if (!caseData.evidenceItems.trim()) {
+    suggestedQuestions.push("Is there physical, digital, photo, or video evidence that should be documented?");
+  }
+
+  if (!caseData.peopleInvolved.trim()) {
+    suggestedQuestions.push("Who are the reporting party, witnesses, involved persons, or responding officers?");
+  }
+
+  if (!caseData.narrativeNotes.trim()) {
+    suggestedQuestions.push("What is the basic timeline of what happened before, during, and after the incident?");
+  }
+
+  const signalCount = suggestedQuestions.length + evidence.length + actions.length;
+  const reviewPriority = missingItems.length >= 4 ? "High" : signalCount >= 5 ? "Medium" : "Low";
+
+  return {
+    reviewPriority,
+    summary: caseData.narrativeNotes.trim()
+      ? `This case review is based on a ${caseData.incidentType || "reported incident"} at ${
+          caseData.location || "an unspecified location"
+        }. The current notes include ${people.length || "no listed"} people, ${evidence.length || "no listed"} evidence item(s), and ${
+          actions.length || "no listed"
+        } action(s).`
+      : "Add narrative notes to generate a more useful case review summary.",
+    keyDetails: [
+      `Incident type: ${caseData.incidentType || "Missing"}`,
+      `Location: ${caseData.location || "Missing"}`,
+      `People listed: ${people.length || 0}`,
+      `Evidence/items listed: ${evidence.length || 0}`,
+      `Actions listed: ${actions.length || 0}`,
+    ],
+    suggestedQuestions: [...new Set(suggestedQuestions)],
+    missingItems,
+  };
 }
 
 function buildMissingItems(caseData) {
@@ -134,12 +221,18 @@ function TextAreaField({ id, label, value, onChange, required = false, placehold
 function App() {
   const [caseData, setCaseData] = React.useState(emptyCase);
   const [report, setReport] = React.useState(buildReport(emptyCase));
+  const [caseReview, setCaseReview] = React.useState(null);
+  const [aiReview, setAiReview] = React.useState(null);
+  const [aiStatus, setAiStatus] = React.useState("idle");
   const [copied, setCopied] = React.useState(false);
 
   const missingItems = buildMissingItems(caseData);
 
   function updateField(field, value) {
     setCaseData((current) => ({ ...current, [field]: value }));
+    setCaseReview(null);
+    setAiReview(null);
+    setAiStatus("idle");
     setCopied(false);
   }
 
@@ -148,15 +241,52 @@ function App() {
     setCopied(false);
   }
 
+  async function analyzeCase() {
+    const localReview = buildCaseReview(caseData, missingItems);
+    const currentReport = buildReport(caseData);
+    setCaseReview(localReview);
+    setAiReview(null);
+    setAiStatus("loading");
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          caseData,
+          report: currentReport,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "AI review is unavailable.");
+      }
+
+      setAiReview(data);
+      setAiStatus("ready");
+    } catch (error) {
+      setAiStatus("fallback");
+    }
+  }
+
   function loadSample() {
     setCaseData(sampleCase);
     setReport(buildReport(sampleCase));
+    setCaseReview(buildCaseReview(sampleCase, buildMissingItems(sampleCase)));
+    setAiReview(null);
+    setAiStatus("idle");
     setCopied(false);
   }
 
   function resetForm() {
     setCaseData(emptyCase);
     setReport(buildReport(emptyCase));
+    setCaseReview(null);
+    setAiReview(null);
+    setAiStatus("idle");
     setCopied(false);
   }
 
@@ -232,6 +362,9 @@ function App() {
             <button type="button" className="primary-button" onClick={generateReport}>
               Generate Draft
             </button>
+            <button type="button" className="secondary-button" onClick={analyzeCase}>
+              Analyze Case
+            </button>
             <button type="button" className="secondary-button" onClick={resetForm}>
               Reset
             </button>
@@ -257,10 +390,76 @@ function App() {
           <div className="policy-note">
             <h3>Prototype Boundary</h3>
             <p>
-              This tool assists with documentation only. It does not identify suspects, make legal conclusions, recommend charges, or replace official review.
+              This tool assists with case review only. It does not identify suspects, classify gang affiliation, make legal conclusions, recommend charges, or replace official review.
             </p>
           </div>
         </aside>
+
+        <section className="copilot-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Detective Copilot Review</h2>
+              <p>Analyze the draft for key details and follow-up questions.</p>
+            </div>
+            <button type="button" className="ghost-button" onClick={analyzeCase}>
+              Analyze
+            </button>
+          </div>
+
+          {caseReview ? (
+            <div className="copilot-content">
+              <div className={`priority priority-${caseReview.reviewPriority.toLowerCase()}`}>
+                Review Priority: {caseReview.reviewPriority}
+              </div>
+
+              {aiStatus === "loading" && <div className="ai-status">Checking AI review endpoint...</div>}
+              {aiStatus === "fallback" && (
+                <div className="ai-status">
+                  Local demo review shown. Add a local API key to enable AI-assisted review.
+                </div>
+              )}
+              {aiReview && (
+                <div className="ai-review">
+                  <h3>AI-Assisted Review</h3>
+                  <pre>{aiReview.reviewText}</pre>
+                </div>
+              )}
+
+              <div>
+                <h3>Case Summary</h3>
+                <p>{caseReview.summary}</p>
+              </div>
+
+              <div>
+                <h3>Key Details</h3>
+                <ul>
+                  {caseReview.keyDetails.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3>Suggested Follow-Up Questions</h3>
+                <ul>
+                  {caseReview.suggestedQuestions.length ? (
+                    caseReview.suggestedQuestions.map((question) => <li key={question}>{question}</li>)
+                  ) : (
+                    <li>No specific follow-up questions yet. Add more case notes to improve the review.</li>
+                  )}
+                </ul>
+              </div>
+
+              <p className="review-disclaimer">
+                Prototype note: this is rule-based demo logic that simulates an AI assistant. A future version can connect this workflow to an AI API.
+              </p>
+            </div>
+          ) : (
+            <div className="empty-state">
+              Generate or enter report details, then select Analyze Case to simulate an AI-assisted detective review.
+            </div>
+          )}
+        </section>
 
         <section className="report-panel">
           <div className="panel-heading">

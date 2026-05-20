@@ -28,6 +28,24 @@ If the browser blocks local files, run this command from the project folder and 
 powershell -ExecutionPolicy Bypass -File .\scripts\serve.ps1
 ```
 
+## Optional AI Review
+
+The prototype can run without an API key. In that mode, the Detective Copilot Review uses local demo logic.
+
+The `.env.example` file is safe to commit because it only shows the variable names the project expects. Each teammate should copy it to their own local `.env` file and put their own API key there. The `.env` file is ignored by Git and should never be committed or shared.
+
+To try AI-assisted review locally, copy `.env.example` to `.env`, add your API key, and restart the local server:
+
+```powershell
+copy .env.example .env
+notepad .env
+powershell -ExecutionPolicy Bypass -File .\scripts\serve.ps1
+```
+
+Never commit `.env` or paste API keys into the browser code.
+
+Do not include real API keys, real personal information, real law enforcement data, or real team/private IP addresses in the repo. Use sample/demo values only.
+
 ## Team Members
 
 - Mark Iversen
