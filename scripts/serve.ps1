@@ -142,6 +142,28 @@ Rules:
 
 Incident report:
 $($inputData.report)
+
+Case intelligence notes:
+People of interest:
+$($inputData.intelligenceNotes.peopleOfInterest)
+
+Known associates:
+$($inputData.intelligenceNotes.knownAssociates)
+
+Related locations:
+$($inputData.intelligenceNotes.locations)
+
+Evidence status:
+$($inputData.intelligenceNotes.evidenceStatus)
+
+Timeline notes:
+$($inputData.intelligenceNotes.timelineNotes)
+
+Observed identifiers:
+$($inputData.intelligenceNotes.observedIdentifiers)
+
+Open questions:
+$($inputData.intelligenceNotes.openQuestions)
 "@
 
         $payload = @{

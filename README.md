@@ -17,10 +17,11 @@ This system does not make legal decisions, identify suspects, determine guilt, r
 - Missing information checklist
 - Case summary generator
 - Human review and edit workflow
+- Case intelligence notes for people, locations, evidence, timeline, identifiers, and open questions
 
 ## Prototype
 
-Open `index.html` in a browser to try the current static React prototype. The first demo lets a user fill out an incident form, generate a structured draft report, edit the output, and copy it for review.
+Open `index.html` in a browser to try the current static React prototype. The demo lets a user fill out an incident form, add case intelligence notes, generate a structured draft report, run a detective copilot review, edit the output, and copy the report.
 
 If the browser blocks local files, run this command from the project folder and open `http://localhost:4173`:
 

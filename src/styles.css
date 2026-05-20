@@ -110,6 +110,7 @@ p {
 
 .intake-panel,
 .review-panel,
+.intelligence-panel,
 .copilot-panel,
 .report-panel {
   border: 1px solid var(--line);
@@ -120,6 +121,7 @@ p {
 
 .intake-panel,
 .review-panel,
+.intelligence-panel,
 .copilot-panel {
   padding: 20px;
 }
@@ -127,6 +129,10 @@ p {
 .report-panel {
   grid-column: 1 / -1;
   padding: 20px;
+}
+
+.intelligence-panel {
+  grid-column: 1 / -1;
 }
 
 .copilot-panel {
@@ -400,6 +406,7 @@ textarea:focus {
 
   .intake-panel,
   .review-panel,
+  .intelligence-panel,
   .report-panel {
     padding: 14px;
   }

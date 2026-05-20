@@ -12,6 +12,16 @@ const emptyCase = {
   actionsTaken: "",
 };
 
+const emptyIntelligenceNotes = {
+  peopleOfInterest: "",
+  knownAssociates: "",
+  locations: "",
+  evidenceStatus: "",
+  timelineNotes: "",
+  observedIdentifiers: "",
+  openQuestions: "",
+};
+
 const sampleCase = {
   officerName: "Jane Doe",
   badgeNumber: "1042",
@@ -26,6 +36,16 @@ const sampleCase = {
   evidenceItems: "Missing laptop\nPossible security camera footage",
   actionsTaken:
     "Took statement from reporting party\nIdentified possible witness\nRequested security footage review",
+};
+
+const sampleIntelligenceNotes = {
+  peopleOfInterest: "Unknown person seen near office area",
+  knownAssociates: "No known associates confirmed",
+  locations: "100 Main Street\nOffice area\nNearby hallway",
+  evidenceStatus: "Security footage requested but not yet reviewed\nWitness statement pending full detail",
+  timelineNotes: "12:00 - Laptop last seen\n13:15 - Unknown person seen near office\n14:30 - Report documented",
+  observedIdentifiers: "Witness mentioned unknown person's clothing but no confirmed description yet",
+  openQuestions: "Can the witness provide a more detailed description?\nDoes security footage show the office area?",
 };
 
 const requiredFields = [
@@ -87,18 +107,32 @@ function includesAny(source, terms) {
   return terms.some((term) => normalized.includes(term));
 }
 
-function buildCaseReview(caseData, missingItems) {
+function buildCaseReview(caseData, intelligenceNotes, missingItems) {
   const combinedText = [
     caseData.incidentType,
     caseData.peopleInvolved,
     caseData.narrativeNotes,
     caseData.evidenceItems,
     caseData.actionsTaken,
+    intelligenceNotes.peopleOfInterest,
+    intelligenceNotes.knownAssociates,
+    intelligenceNotes.locations,
+    intelligenceNotes.evidenceStatus,
+    intelligenceNotes.timelineNotes,
+    intelligenceNotes.observedIdentifiers,
+    intelligenceNotes.openQuestions,
   ].join(" ");
 
   const people = splitLines(caseData.peopleInvolved);
   const evidence = splitLines(caseData.evidenceItems);
   const actions = splitLines(caseData.actionsTaken);
+  const peopleOfInterest = splitLines(intelligenceNotes.peopleOfInterest);
+  const knownAssociates = splitLines(intelligenceNotes.knownAssociates);
+  const relatedLocations = splitLines(intelligenceNotes.locations);
+  const evidenceStatus = splitLines(intelligenceNotes.evidenceStatus);
+  const timelineNotes = splitLines(intelligenceNotes.timelineNotes);
+  const observedIdentifiers = splitLines(intelligenceNotes.observedIdentifiers);
+  const openQuestions = splitLines(intelligenceNotes.openQuestions);
   const suggestedQuestions = followUpRules
     .filter((rule) => includesAny(combinedText, rule.terms))
     .map((rule) => rule.question);
@@ -115,7 +149,17 @@ function buildCaseReview(caseData, missingItems) {
     suggestedQuestions.push("What is the basic timeline of what happened before, during, and after the incident?");
   }
 
-  const signalCount = suggestedQuestions.length + evidence.length + actions.length;
+  if (timelineNotes.length) {
+    suggestedQuestions.push("Are there timeline gaps or conflicts that need to be resolved?");
+  }
+
+  if (openQuestions.length) {
+    suggestedQuestions.push("Which open questions should be assigned for follow-up before final review?");
+  }
+
+  const intelligenceSignalCount =
+    peopleOfInterest.length + knownAssociates.length + relatedLocations.length + evidenceStatus.length + timelineNotes.length + observedIdentifiers.length;
+  const signalCount = suggestedQuestions.length + evidence.length + actions.length + intelligenceSignalCount;
   const reviewPriority = missingItems.length >= 4 ? "High" : signalCount >= 5 ? "Medium" : "Low";
 
   return {
@@ -123,16 +167,20 @@ function buildCaseReview(caseData, missingItems) {
     summary: caseData.narrativeNotes.trim()
       ? `This case review is based on a ${caseData.incidentType || "reported incident"} at ${
           caseData.location || "an unspecified location"
-        }. The current notes include ${people.length || "no listed"} people, ${evidence.length || "no listed"} evidence item(s), and ${
+        }. The current notes include ${people.length || "no listed"} report people, ${evidence.length || "no listed"} evidence item(s), ${
           actions.length || "no listed"
-        } action(s).`
+        } action(s), and ${intelligenceSignalCount || "no"} intelligence note(s).`
       : "Add narrative notes to generate a more useful case review summary.",
     keyDetails: [
       `Incident type: ${caseData.incidentType || "Missing"}`,
       `Location: ${caseData.location || "Missing"}`,
-      `People listed: ${people.length || 0}`,
-      `Evidence/items listed: ${evidence.length || 0}`,
-      `Actions listed: ${actions.length || 0}`,
+      `Report people listed: ${people.length || 0}`,
+      `People of interest listed: ${peopleOfInterest.length || 0}`,
+      `Known associates listed: ${knownAssociates.length || 0}`,
+      `Related locations listed: ${relatedLocations.length || 0}`,
+      `Evidence/status notes listed: ${evidence.length + evidenceStatus.length || 0}`,
+      `Timeline notes listed: ${timelineNotes.length || 0}`,
+      `Observed identifiers listed: ${observedIdentifiers.length || 0}`,
     ],
     suggestedQuestions: [...new Set(suggestedQuestions)],
     missingItems,
@@ -218,8 +266,77 @@ function TextAreaField({ id, label, value, onChange, required = false, placehold
   );
 }
 
+function IntelligenceNotesPanel({ notes, onChange, onLoadSample }) {
+  return (
+    <section className="intelligence-panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Case Intelligence Notes</h2>
+          <p>Add structured investigation notes for the copilot to review.</p>
+        </div>
+        <button type="button" className="ghost-button" onClick={onLoadSample}>
+          Load Notes
+        </button>
+      </div>
+
+      <div className="field-grid">
+        <TextAreaField
+          id="peopleOfInterest"
+          label="People Of Interest"
+          value={notes.peopleOfInterest}
+          onChange={onChange}
+          placeholder="People mentioned in the investigation, not conclusions"
+        />
+        <TextAreaField
+          id="knownAssociates"
+          label="Known Associates"
+          value={notes.knownAssociates}
+          onChange={onChange}
+          placeholder="Associates or links that need human verification"
+        />
+        <TextAreaField
+          id="locations"
+          label="Related Locations"
+          value={notes.locations}
+          onChange={onChange}
+          placeholder="Addresses, areas, routes, or places connected to the case"
+        />
+        <TextAreaField
+          id="evidenceStatus"
+          label="Evidence Status"
+          value={notes.evidenceStatus}
+          onChange={onChange}
+          placeholder="Requested, pending, reviewed, missing, or disputed evidence"
+        />
+        <TextAreaField
+          id="timelineNotes"
+          label="Timeline Notes"
+          value={notes.timelineNotes}
+          onChange={onChange}
+          placeholder="Important times, sequence of events, or gaps"
+        />
+        <TextAreaField
+          id="observedIdentifiers"
+          label="Observed Identifiers"
+          value={notes.observedIdentifiers}
+          onChange={onChange}
+          placeholder="Neutral descriptions of visible symbols, clothing, language, or markings"
+        />
+        <TextAreaField
+          id="openQuestions"
+          label="Open Questions"
+          value={notes.openQuestions}
+          onChange={onChange}
+          placeholder="Questions that still need detective review"
+        />
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [caseData, setCaseData] = React.useState(emptyCase);
+  const [intelligenceNotes, setIntelligenceNotes] = React.useState(emptyIntelligenceNotes);
   const [report, setReport] = React.useState(buildReport(emptyCase));
   const [caseReview, setCaseReview] = React.useState(null);
   const [aiReview, setAiReview] = React.useState(null);
@@ -236,13 +353,20 @@ function App() {
     setCopied(false);
   }
 
+  function updateIntelligenceNote(field, value) {
+    setIntelligenceNotes((current) => ({ ...current, [field]: value }));
+    setCaseReview(null);
+    setAiReview(null);
+    setAiStatus("idle");
+  }
+
   function generateReport() {
     setReport(buildReport(caseData));
     setCopied(false);
   }
 
   async function analyzeCase() {
-    const localReview = buildCaseReview(caseData, missingItems);
+    const localReview = buildCaseReview(caseData, intelligenceNotes, missingItems);
     const currentReport = buildReport(caseData);
     setCaseReview(localReview);
     setAiReview(null);
@@ -256,6 +380,7 @@ function App() {
         },
         body: JSON.stringify({
           caseData,
+          intelligenceNotes,
           report: currentReport,
         }),
       });
@@ -275,14 +400,23 @@ function App() {
   function loadSample() {
     setCaseData(sampleCase);
     setReport(buildReport(sampleCase));
-    setCaseReview(buildCaseReview(sampleCase, buildMissingItems(sampleCase)));
+    setIntelligenceNotes(sampleIntelligenceNotes);
+    setCaseReview(buildCaseReview(sampleCase, sampleIntelligenceNotes, buildMissingItems(sampleCase)));
     setAiReview(null);
     setAiStatus("idle");
     setCopied(false);
   }
 
+  function loadSampleNotes() {
+    setIntelligenceNotes(sampleIntelligenceNotes);
+    setCaseReview(null);
+    setAiReview(null);
+    setAiStatus("idle");
+  }
+
   function resetForm() {
     setCaseData(emptyCase);
+    setIntelligenceNotes(emptyIntelligenceNotes);
     setReport(buildReport(emptyCase));
     setCaseReview(null);
     setAiReview(null);
@@ -394,6 +528,8 @@ function App() {
             </p>
           </div>
         </aside>
+
+        <IntelligenceNotesPanel notes={intelligenceNotes} onChange={updateIntelligenceNote} onLoadSample={loadSampleNotes} />
 
         <section className="copilot-panel">
           <div className="panel-heading">
