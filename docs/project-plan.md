@@ -2,28 +2,34 @@
 
 ## Project Topic
 
-Law Enforcement AI Helper
+Law Enforcement AI Helper / Law Enforcement Case Intelligence Assistant
 
 ## Overview
 
-The Law Enforcement AI Helper is designed to assist with repetitive law enforcement documentation tasks. Officers and administrative staff often spend significant time preparing reports, summaries, and investigation paperwork. This project aims to create a tool that organizes user-provided case details and produces draft documentation for human review.
+The project is a browser-based capstone prototype that assists with incident documentation and human-reviewed case intelligence organization. The application allows a user to enter incident details, generate an editable draft report, add structured case intelligence notes, and run a detective copilot review that identifies missing information and neutral follow-up questions.
 
-## Initial Scope
+## Phase I Scope
 
-- Collect basic incident information from the user
-- Organize details into a structured report format
-- Generate a draft incident report
-- Flag missing or incomplete information
-- Keep the user in control of final review and edits
+- Collect basic incident information through a form-based interface
+- Organize entered details into a structured draft report
+- Show a missing information checklist for required fields
+- Capture structured case intelligence notes for human review
+- Generate local rule-based review output for key details and follow-up questions
+- Support optional AI-assisted review through a local server endpoint
+- Keep all final decisions under qualified human control
 
-## Out Of Scope
+## Out of Scope
 
 - Making legal decisions
 - Predicting guilt or innocence
 - Recommending charges
 - Identifying suspects
+- Classifying gang affiliation
+- Performing facial recognition or biometric identification
 - Replacing law enforcement judgment
+- Using real law enforcement data or real personal data in classroom demos
 
 ## First Milestone
 
-Create a simple prototype that accepts incident details and generates a structured draft report.
+Create a working local prototype that accepts incident details, generates a structured draft report, captures case intelligence notes, runs a review workflow, and documents both automated and manual validation.
+

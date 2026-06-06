@@ -1,100 +1,12 @@
-const emptyCase = {
-  officerName: "",
-  badgeNumber: "",
-  reportNumber: "",
-  date: "",
-  time: "",
-  location: "",
-  incidentType: "",
-  peopleInvolved: "",
-  narrativeNotes: "",
-  evidenceItems: "",
-  actionsTaken: "",
-};
-
-const sampleCase = {
-  officerName: "Jane Doe",
-  badgeNumber: "1042",
-  reportNumber: "2026-0517-001",
-  date: "2026-05-17",
-  time: "14:30",
-  location: "100 Main Street",
-  incidentType: "Theft Report",
-  peopleInvolved: "Reporting party: John Smith\nWitness: Maria Lopez",
-  narrativeNotes:
-    "The reporting party stated that a laptop was missing from an office desk. The item was last seen around 12:00. A witness reported seeing an unknown person near the office area around 13:15.",
-  evidenceItems: "Missing laptop\nPossible security camera footage",
-  actionsTaken:
-    "Took statement from reporting party\nIdentified possible witness\nRequested security footage review",
-};
-
-const requiredFields = [
-  ["officerName", "Officer name"],
-  ["date", "Date"],
-  ["time", "Time"],
-  ["location", "Location"],
-  ["incidentType", "Incident type"],
-  ["peopleInvolved", "People involved"],
-  ["narrativeNotes", "Narrative notes"],
-  ["actionsTaken", "Actions taken"],
-];
-
-function formatList(value, fallback) {
-  const lines = value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!lines.length) {
-    return `- ${fallback}`;
-  }
-
-  return lines.map((line) => `- ${line}`).join("\n");
-}
-
-function buildMissingItems(caseData) {
-  return requiredFields
-    .filter(([key]) => !caseData[key].trim())
-    .map(([, label]) => label);
-}
-
-function buildReport(caseData) {
-  const officer = caseData.officerName || "Missing";
-  const date = caseData.date || "Missing";
-  const time = caseData.time || "Missing";
-  const location = caseData.location || "Missing";
-  const incidentType = caseData.incidentType || "Missing";
-  const reportNumber = caseData.reportNumber || "Not assigned";
-  const badgeNumber = caseData.badgeNumber || "Not provided";
-
-  return `INCIDENT REPORT DRAFT
-
-Report Number: ${reportNumber}
-Officer: ${officer}
-Badge Number: ${badgeNumber}
-Date: ${date}
-Time: ${time}
-Location: ${location}
-Incident Type: ${incidentType}
-
-INCIDENT SUMMARY
-On ${date} at approximately ${time}, ${officer} documented a ${incidentType.toLowerCase()} at ${location}. This draft report is based on the information entered by the user and should be reviewed before final submission.
-
-PEOPLE INVOLVED
-${formatList(caseData.peopleInvolved, "No people listed.")}
-
-NARRATIVE
-${caseData.narrativeNotes || "No narrative notes provided."}
-
-EVIDENCE OR ITEMS
-${formatList(caseData.evidenceItems, "No evidence or items listed.")}
-
-ACTIONS TAKEN
-${formatList(caseData.actionsTaken, "No actions listed.")}
-
-REVIEW NOTE
-This document is an assisted draft. A qualified human reviewer should verify accuracy, completeness, policy compliance, and required approvals before use.`;
-}
+const {
+  emptyCase,
+  emptyIntelligenceNotes,
+  sampleCase,
+  sampleIntelligenceNotes,
+  buildMissingItems,
+  buildReport,
+  buildCaseReview,
+} = ReportLogic;
 
 function Field({ id, label, value, onChange, type = "text", required = false, placeholder }) {
   return (
@@ -131,16 +43,98 @@ function TextAreaField({ id, label, value, onChange, required = false, placehold
   );
 }
 
+function IntelligenceNotesPanel({ notes, onChange, onLoadSample }) {
+  return (
+    <section className="intelligence-panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Case Intelligence Notes</h2>
+          <p>Add structured notes for human-reviewed case follow-up.</p>
+        </div>
+        <button type="button" className="ghost-button" onClick={onLoadSample}>
+          Load Notes
+        </button>
+      </div>
+
+      <div className="field-grid">
+        <TextAreaField
+          id="peopleOfInterest"
+          label="People Of Interest"
+          value={notes.peopleOfInterest}
+          onChange={onChange}
+          placeholder="People mentioned in the investigation, not conclusions"
+        />
+        <TextAreaField
+          id="knownAssociates"
+          label="Known Associates"
+          value={notes.knownAssociates}
+          onChange={onChange}
+          placeholder="Associates or links that need human verification"
+        />
+        <TextAreaField
+          id="locations"
+          label="Related Locations"
+          value={notes.locations}
+          onChange={onChange}
+          placeholder="Addresses, areas, routes, or places connected to the case"
+        />
+        <TextAreaField
+          id="evidenceStatus"
+          label="Evidence Status"
+          value={notes.evidenceStatus}
+          onChange={onChange}
+          placeholder="Requested, pending, reviewed, missing, or disputed evidence"
+        />
+        <TextAreaField
+          id="timelineNotes"
+          label="Timeline Notes"
+          value={notes.timelineNotes}
+          onChange={onChange}
+          placeholder="Important times, sequence of events, or gaps"
+        />
+        <TextAreaField
+          id="observedIdentifiers"
+          label="Observed Identifiers"
+          value={notes.observedIdentifiers}
+          onChange={onChange}
+          placeholder="Neutral descriptions of visible clothing, language, markings, or other observations"
+        />
+        <TextAreaField
+          id="openQuestions"
+          label="Open Questions"
+          value={notes.openQuestions}
+          onChange={onChange}
+          placeholder="Questions that still need detective review"
+        />
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [caseData, setCaseData] = React.useState(emptyCase);
+  const [intelligenceNotes, setIntelligenceNotes] = React.useState(emptyIntelligenceNotes);
   const [report, setReport] = React.useState(buildReport(emptyCase));
+  const [caseReview, setCaseReview] = React.useState(null);
+  const [aiReview, setAiReview] = React.useState(null);
+  const [aiStatus, setAiStatus] = React.useState("idle");
   const [copied, setCopied] = React.useState(false);
 
   const missingItems = buildMissingItems(caseData);
 
   function updateField(field, value) {
     setCaseData((current) => ({ ...current, [field]: value }));
+    setCaseReview(null);
+    setAiReview(null);
+    setAiStatus("idle");
     setCopied(false);
+  }
+
+  function updateIntelligenceNote(field, value) {
+    setIntelligenceNotes((current) => ({ ...current, [field]: value }));
+    setCaseReview(null);
+    setAiReview(null);
+    setAiStatus("idle");
   }
 
   function generateReport() {
@@ -148,15 +142,63 @@ function App() {
     setCopied(false);
   }
 
+  async function analyzeCase() {
+    const localReview = buildCaseReview(caseData, intelligenceNotes, missingItems);
+    const currentReport = buildReport(caseData);
+    setReport(currentReport);
+    setCaseReview(localReview);
+    setAiReview(null);
+    setAiStatus("loading");
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          caseData,
+          intelligenceNotes,
+          report: currentReport,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "AI review is unavailable.");
+      }
+
+      setAiReview(data);
+      setAiStatus("ready");
+    } catch (error) {
+      setAiStatus("fallback");
+    }
+  }
+
   function loadSample() {
     setCaseData(sampleCase);
+    setIntelligenceNotes(sampleIntelligenceNotes);
     setReport(buildReport(sampleCase));
+    setCaseReview(buildCaseReview(sampleCase, sampleIntelligenceNotes, buildMissingItems(sampleCase)));
+    setAiReview(null);
+    setAiStatus("idle");
     setCopied(false);
+  }
+
+  function loadSampleNotes() {
+    setIntelligenceNotes(sampleIntelligenceNotes);
+    setCaseReview(null);
+    setAiReview(null);
+    setAiStatus("idle");
   }
 
   function resetForm() {
     setCaseData(emptyCase);
+    setIntelligenceNotes(emptyIntelligenceNotes);
     setReport(buildReport(emptyCase));
+    setCaseReview(null);
+    setAiReview(null);
+    setAiStatus("idle");
     setCopied(false);
   }
 
@@ -232,6 +274,9 @@ function App() {
             <button type="button" className="primary-button" onClick={generateReport}>
               Generate Draft
             </button>
+            <button type="button" className="secondary-button" onClick={analyzeCase}>
+              Analyze Case
+            </button>
             <button type="button" className="secondary-button" onClick={resetForm}>
               Reset
             </button>
@@ -257,10 +302,90 @@ function App() {
           <div className="policy-note">
             <h3>Prototype Boundary</h3>
             <p>
-              This tool assists with documentation only. It does not identify suspects, make legal conclusions, recommend charges, or replace official review.
+              This tool assists with documentation and case review only. It does not identify suspects, classify gang affiliation, make legal conclusions,
+              recommend charges, or replace official review.
             </p>
           </div>
         </aside>
+
+        <IntelligenceNotesPanel notes={intelligenceNotes} onChange={updateIntelligenceNote} onLoadSample={loadSampleNotes} />
+
+        <section className="copilot-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Detective Copilot Review</h2>
+              <p>Review the draft and notes for missing information and follow-up questions.</p>
+            </div>
+            <button type="button" className="ghost-button" onClick={analyzeCase}>
+              Analyze
+            </button>
+          </div>
+
+          {caseReview ? (
+            <div className="copilot-content">
+              <div className={`priority priority-${caseReview.reviewPriority.toLowerCase()}`}>
+                Review Priority: {caseReview.reviewPriority}
+              </div>
+
+              {aiStatus === "loading" && <div className="ai-status">Checking optional AI review endpoint...</div>}
+              {aiStatus === "fallback" && (
+                <div className="ai-status">
+                  Local rule-based review shown. Add a local API key to enable optional AI-assisted review.
+                </div>
+              )}
+              {aiReview && (
+                <div className="ai-review">
+                  <h3>AI-Assisted Review</h3>
+                  <pre>{aiReview.reviewText}</pre>
+                </div>
+              )}
+
+              <div>
+                <h3>Case Summary</h3>
+                <p>{caseReview.summary}</p>
+              </div>
+
+              <div>
+                <h3>Key Details</h3>
+                <ul>
+                  {caseReview.keyDetails.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3>Missing Information</h3>
+                <ul>
+                  {caseReview.missingItems.length ? (
+                    caseReview.missingItems.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>No required intake fields are missing.</li>
+                  )}
+                </ul>
+              </div>
+
+              <div>
+                <h3>Suggested Follow-Up Questions</h3>
+                <ul>
+                  {caseReview.suggestedQuestions.length ? (
+                    caseReview.suggestedQuestions.map((question) => <li key={question}>{question}</li>)
+                  ) : (
+                    <li>No specific follow-up questions yet. Add more case notes to improve the review.</li>
+                  )}
+                </ul>
+              </div>
+
+              <p className="review-disclaimer">
+                Prototype note: review output is draft support for a qualified human reviewer. It is not a finding, accusation, legal conclusion, or charging recommendation.
+              </p>
+            </div>
+          ) : (
+            <div className="empty-state">
+              Generate or enter report details, then select Analyze Case to review the draft and case intelligence notes.
+            </div>
+          )}
+        </section>
 
         <section className="report-panel">
           <div className="panel-heading">
@@ -287,3 +412,4 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+

@@ -1,0 +1,10 @@
+{
+  "name": "law-enforcement-ai-helper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CMSC 495 Team 5 static React prototype for incident report drafting and human-reviewed case intelligence notes.",
+  "scripts": {
+    "test": "node --test tests/reportLogic.test.js"
+  },
+  "devDependencies": {}
+}
