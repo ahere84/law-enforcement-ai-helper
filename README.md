@@ -46,7 +46,8 @@ Runtime libraries:
 From the project folder:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\serve.ps1
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\serve.ps1
 ```
 
 Then open:
@@ -76,7 +77,8 @@ To try AI-assisted review locally:
 ```powershell
 copy .env.example .env
 notepad .env
-powershell -ExecutionPolicy Bypass -File .\scripts\serve.ps1
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\serve.ps1
 ```
 
 Never commit `.env` or paste API keys into browser code.
@@ -87,4 +89,3 @@ Never commit `.env` or paste API keys into browser code.
 - Alex Isaac
 - Andy Heredia
 - Theodor Santos-Gafudy
-

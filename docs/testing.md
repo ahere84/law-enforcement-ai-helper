@@ -24,7 +24,8 @@ The automated tests cover:
 Run the local server:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\serve.ps1
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\serve.ps1
 ```
 
 Then open `http://localhost:4173`.
@@ -43,4 +44,3 @@ Manual scenarios:
 ## Test Data Rules
 
 Use fictional sample data only. Do not enter real law enforcement data, real personal data, real API keys, private IP addresses, or sensitive records into the repository or demonstration documents.
-
